@@ -22,6 +22,21 @@ would say "there is a slot machine here" once and then say nothing all day;
 the result says the same thing and leaves the outcome where you can see it.
 A win tints it with the theme accent until the next spin.
 
+## Sound
+
+Each reel clicks as it stops, and a win gets a short rise — a jackpot gets
+three notes instead of two. A losing spin gets nothing beyond its three
+clicks: giving it a fourth noise would be the machine congratulating you for
+nothing.
+
+The speaker in the panel header silences all of it, and the choice is
+remembered. It is the only thing this plugin persists.
+
+The three sounds are generated, not sampled — plain sine tones with a short
+attack and an exponential tail, written straight to WAV. They are a few
+kilobytes, they ship with the plugin, and they are played through `pw-play`,
+which PipeWire already provides.
+
 ## The odds, which are printed on the machine
 
 Five symbols, three reels, every reel independent and uniform — 125 equally

@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "Machine.js" as Machine
@@ -33,6 +34,37 @@ Panel {
   readonly property bool won: result === "three" || result === "jackpot"
   readonly property string resultLabel: result === "" ? "" : Machine.outcomeLabel(result)
 
+  // Muted rides in the widget's own shell.json entry, so a machine silenced
+  // once stays silenced. It is the only thing here worth persisting — the
+  // stats are a toy and a toy that survives reboots starts to feel like a
+  // ledger.
+  readonly property bool muted: setting("muted", false) === true
+  function toggleMuted() { root.persistSettings({ muted: !root.muted }) }
+
+  function persistSettings(values) {
+    var entry = { id: root.moduleName }
+    for (var existing in root.settings) if (existing !== "id") entry[existing] = root.settings[existing]
+    for (var key in values) entry[key] = values[key]
+    root.settings = entry
+    if (root.hostWidget && "settings" in root.hostWidget) root.hostWidget.settings = entry
+    if (root.bar && root.bar.shell && typeof root.bar.shell.updateEntryInline === "function")
+      root.bar.shell.updateEntryInline(root.moduleName, entry)
+  }
+
+  readonly property string soundDir: Qt.resolvedUrl("sounds").toString().replace("file://", "")
+
+  // Two processes rather than one: a reel tick lands 360ms before the next,
+  // which is comfortable, but the outcome sound overlaps the final tick and
+  // reusing a single running process would drop one of them.
+  Process { id: tickPlayer }
+  Process { id: outcomePlayer }
+
+  function play(player, name) {
+    if (root.muted || player.running) return
+    player.command = ["pw-play", "--volume=0.45", root.soundDir + "/" + name + ".wav"]
+    player.running = true
+  }
+
   readonly property color contentForeground: bar ? bar.foreground : Color.foreground
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
 
@@ -59,12 +91,18 @@ Panel {
     var next = root.locked.slice()
     next[index] = true
     root.locked = next
+    root.play(tickPlayer, "tick")
 
     if (next[0] && next[1] && next[2]) {
       reelTick.stop()
       root.spinning = false
       root.result = Machine.outcome(root.reels)
       root.stats = Machine.recordSpin(root.stats, root.result)
+      // Only a win is worth a sound of its own. A losing spin already got
+      // three ticks, and giving it a fourth noise would be the machine
+      // congratulating you for nothing.
+      if (root.result === "jackpot") root.play(outcomePlayer, "jackpot")
+      else if (root.result === "three") root.play(outcomePlayer, "win")
       if (root.hostWidget) {
         if ("lastReels" in root.hostWidget) root.hostWidget.lastReels = root.reels
         if ("lastWon" in root.hostWidget) root.hostWidget.lastWon = root.won
@@ -140,16 +178,34 @@ Panel {
     // and the children centre inside it.
     width: parent.width
 
-    // ---- Title. Small caps and letter-spaced, the way the stock panels
-    //      label a section, rather than a machine's nameplate.
-    Text {
-      textFormat: Text.PlainText
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: "SLOTS"
-      color: Qt.darker(root.contentForeground, 1.4)
-      font.family: root.contentFontFamily
-      font.pixelSize: Style.font.caption
-      font.letterSpacing: 2
+    // ---- Title, with the mute control out on the right edge. Small caps and
+    //      letter-spaced, the way the stock panels label a section, rather
+    //      than a machine's nameplate.
+    Item {
+      width: parent.width
+      height: Math.max(title.implicitHeight, muteToggle.height)
+
+      Text {
+        id: title
+        textFormat: Text.PlainText
+        anchors.centerIn: parent
+        text: "SLOTS"
+        color: Qt.darker(root.contentForeground, 1.4)
+        font.family: root.contentFontFamily
+        font.pixelSize: Style.font.caption
+        font.letterSpacing: 2
+      }
+
+      PanelActionButton {
+        id: muteToggle
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: root.muted ? "󰝟" : "󰕾"
+        tooltipText: root.muted ? "Unmute" : "Mute"
+        foreground: root.muted ? Qt.darker(root.contentForeground, 2.0) : root.contentForeground
+        fontFamily: root.contentFontFamily
+        onClicked: root.toggleMuted()
+      }
     }
 
     // ---- The reels.

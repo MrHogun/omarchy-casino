@@ -17,6 +17,18 @@
     "description": "Three reels in a panel; the bar keeps the result of the last spin.",
     "category": "Fun",
     "allowMultiple": false,
-    "defaultSection": "right"
+    "defaultSection": "right",
+    "defaults": {
+      "muted": false
+    },
+    "schema": [
+      {
+        "key": "muted",
+        "type": "boolean",
+        "label": "Mute",
+        "description": "Silence the reel ticks and the win sounds. The speaker icon in the panel header toggles it too.",
+        "defaultValue": false
+      }
+    ]
   }
 }
