@@ -31,6 +31,52 @@ Panel {
   property string result: ""
   property var stats: Machine.emptyStats()
 
+  // Stats live in a state file rather than in the widget's shell.json entry.
+  // They change on every spin, and rewriting the bar's own config that often
+  // to record a toy's score would be the wrong thing to churn. Atomic writes,
+  // so a spin landing mid-save cannot leave half a file behind.
+  readonly property string statsPath: Quickshell.env("HOME") + "/.local/state/omarchy/slots.json"
+
+  FileView {
+    id: statsFile
+    path: root.statsPath
+    watchChanges: false
+    atomicWrites: true
+    printErrors: false
+    onLoaded: {
+      try {
+        var loaded = JSON.parse(text())
+        // Guard the shape rather than trusting the file: it is editable, and
+        // a hand-mangled one should reset the tally, not break the panel.
+        if (loaded && typeof loaded.spins === "number")
+          root.stats = {
+            spins: loaded.spins || 0,
+            wins: loaded.wins || 0,
+            jackpots: loaded.jackpots || 0,
+            streak: loaded.streak || 0,
+            worst: loaded.worst || 0
+          }
+      } catch (e) {
+        console.log("mrhogun.slots: stats unreadable, starting fresh: " + e)
+      }
+    }
+  }
+
+  function resetStats() {
+    root.stats = Machine.emptyStats()
+    root.result = ""
+    root.reels = [Machine.IDLE, Machine.IDLE, Machine.IDLE]
+    if (root.hostWidget && "lastReels" in root.hostWidget)
+      root.hostWidget.lastReels = root.reels
+    if (root.hostWidget && "lastWon" in root.hostWidget)
+      root.hostWidget.lastWon = false
+    root.saveStats()
+  }
+
+  function saveStats() {
+    statsFile.setText(JSON.stringify(root.stats, null, 2) + "\n")
+  }
+
   readonly property bool won: result === "three" || result === "jackpot"
   readonly property string resultLabel: result === "" ? "" : Machine.outcomeLabel(result)
 
@@ -98,6 +144,7 @@ Panel {
       root.spinning = false
       root.result = Machine.outcome(root.reels)
       root.stats = Machine.recordSpin(root.stats, root.result)
+      root.saveStats()
       // Only a win is worth a sound of its own. A losing spin already got
       // three ticks, and giving it a fourth noise would be the machine
       // congratulating you for nothing.
@@ -194,6 +241,7 @@ Panel {
       // say something the reels are already saying — and swapping two strings
       // of different lengths made the line jump. Dimming is the whole signal.
       meta: Machine.statsLabel(root.stats) || "Nothing ventured"
+      detail: Machine.jackpotBadge(root.stats)
       metaOpacity: root.spinning ? 0.4 : 1.0
       Behavior on metaOpacity { NumberAnimation { duration: 180 } }
       foreground: root.contentForeground
@@ -209,13 +257,35 @@ Panel {
         }
       }
 
+      // Both controls sized to the hero's own icon. At the button default of
+      // Style.font.icon they read as afterthoughts next to a 24px glyph; at
+      // the hero's size the header balances, an icon at each end.
       trailingControl: Component {
-        PanelActionButton {
-          iconText: root.muted ? "󰝟" : "󰕾"
-          tooltipText: root.muted ? "Unmute" : "Mute"
-          foreground: root.muted ? Qt.darker(root.contentForeground, 2.0) : root.contentForeground
-          fontFamily: root.contentFontFamily
-          onClicked: root.toggleMuted()
+        Row {
+          spacing: Style.space(4)
+
+          PanelActionButton {
+            iconText: "󰦛"
+            tooltipText: "Reset the tally"
+            // Dimmed until there is something to undo, so the control says
+            // whether it would do anything before you press it.
+            enabled: root.stats.spins > 0
+            foreground: root.stats.spins > 0
+              ? root.contentForeground
+              : Qt.darker(root.contentForeground, 2.4)
+            fontFamily: root.contentFontFamily
+            fontSize: Style.font.display
+            onClicked: root.resetStats()
+          }
+
+          PanelActionButton {
+            iconText: root.muted ? "󰝟" : "󰕾"
+            tooltipText: root.muted ? "Unmute" : "Mute"
+            foreground: root.muted ? Qt.darker(root.contentForeground, 2.0) : root.contentForeground
+            fontFamily: root.contentFontFamily
+            fontSize: Style.font.display
+            onClicked: root.toggleMuted()
+          }
         }
       }
     }

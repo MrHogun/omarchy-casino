@@ -73,8 +73,15 @@ Spins, wins, jackpots, and **driest** — the longest run of spins without a
 win. That last one is the honest statistic for a machine like this, and the
 only one that is actually fun to watch climb.
 
-Stats live for as long as the shell does. Nothing is written to disk: a toy
-that survives reboots starts to feel like a ledger.
+Stats are kept in `~/.local/state/omarchy/slots.json` and survive a restart.
+They are written there rather than into the widget's `shell.json` entry: they
+change on every spin, and rewriting the bar's own config that often to record
+a toy's score would be the wrong thing to churn. Writes are atomic, so a spin
+landing mid-save cannot leave half a file behind.
+
+The `󰦛` in the header resets the tally, and dims itself when there is nothing
+to reset. Jackpots get a badge beside the title rather than a clause in the
+line, because they are the rare thing and a badge suits them better.
 
 ## Install
 

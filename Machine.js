@@ -83,12 +83,23 @@ function recordSpin(stats, result) {
   }
 }
 
+// Jackpots are pulled out of the tally and into the hero's detail pill: they
+// are the rare thing, a badge suits them better than a clause, and the line
+// they leave is short enough not to be elided by the controls beside it.
+function jackpotBadge(stats) {
+  var s = stats && stats.jackpots !== undefined ? stats : emptyStats()
+  if (!s.jackpots) return ""
+  return s.jackpots === 1 ? "1 JACKPOT" : (s.jackpots + " JACKPOTS")
+}
+
 function statsLabel(stats) {
   var s = stats && stats.spins !== undefined ? stats : emptyStats()
   if (s.spins === 0) return ""
   var parts = [s.spins + (s.spins === 1 ? " SPIN" : " SPINS")]
   parts.push(s.wins + (s.wins === 1 ? " WIN" : " WINS"))
-  if (s.jackpots > 0) parts.push(s.jackpots + (s.jackpots === 1 ? " JACKPOT" : " JACKPOTS"))
   if (s.worst > 0) parts.push("DRIEST " + s.worst)
-  return parts.join("   ·   ")
+  // Tight separators, not the airy ones this had: the trailing controls and
+  // the jackpot pill leave this line perhaps 200px, and three spaces either
+  // side of each dot was the difference between fitting and being elided.
+  return parts.join(" · ")
 }
