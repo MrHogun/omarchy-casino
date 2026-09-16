@@ -188,9 +188,14 @@ Panel {
       title: "Slots"
       // The meta line carries the running tally, which is why the stats no
       // longer need a row of their own at the bottom.
-      meta: root.spinning
-        ? "Spinning"
-        : (Machine.statsLabel(root.stats) || "Nothing ventured")
+      //
+      // Spinning dims this rather than replacing it. The tally does not stop
+      // being true while the reels turn, so swapping it out loses a fact to
+      // say something the reels are already saying — and swapping two strings
+      // of different lengths made the line jump. Dimming is the whole signal.
+      meta: Machine.statsLabel(root.stats) || "Nothing ventured"
+      metaOpacity: root.spinning ? 0.4 : 1.0
+      Behavior on metaOpacity { NumberAnimation { duration: 180 } }
       foreground: root.contentForeground
       fontFamily: root.contentFontFamily
 
@@ -250,6 +255,32 @@ Panel {
             ? Color.accent
             : Style.normalBorderFor(root.contentForeground, root.contentForeground)
 
+          // The jackpot's own flourish: a swell that rolls left to right and
+          // comes back round three times. Scale rather than colour, because
+          // the border and glyph have already gone accent by then and a
+          // second colour change would land on top of the first.
+          SequentialAnimation {
+            id: jackpotPulse
+            loops: 3
+            PauseAnimation { duration: reel.index * 90 }
+            NumberAnimation {
+              target: reel; property: "scale"; to: 1.14
+              duration: 150; easing.type: Easing.OutQuad
+            }
+            NumberAnimation {
+              target: reel; property: "scale"; to: 1.0
+              duration: 240; easing.type: Easing.OutBack
+            }
+            PauseAnimation { duration: (2 - reel.index) * 90 }
+          }
+
+          Connections {
+            target: root
+            function onResultChanged() {
+              if (root.result === "jackpot") jackpotPulse.restart()
+            }
+          }
+
           Text {
             textFormat: Text.PlainText
             anchors.centerIn: parent
@@ -287,9 +318,27 @@ Panel {
         color: root.won ? Color.accent : Qt.darker(root.contentForeground, 1.6)
         font.family: root.contentFontFamily
         font.pixelSize: Style.font.body
-        font.letterSpacing: 1
         opacity: root.spinning ? 0.6 : 1.0
         Behavior on opacity { NumberAnimation { duration: 150 } }
+
+        // Every other outcome sits at 1. The jackpot's letters push apart and
+        // stay there — the word itself becoming the announcement, which is
+        // about as much noise as this panel is willing to make.
+        font.letterSpacing: 1
+        SequentialAnimation {
+          id: jackpotWord
+          NumberAnimation {
+            target: outcome; property: "font.letterSpacing"
+            from: 1; to: 7; duration: 420; easing.type: Easing.OutCubic
+          }
+        }
+        Connections {
+          target: root
+          function onResultChanged() {
+            if (root.result === "jackpot") jackpotWord.restart()
+            else outcome.font.letterSpacing = 1
+          }
+        }
       }
     }
 

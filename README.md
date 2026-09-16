@@ -29,6 +29,12 @@ three notes instead of two. A losing spin gets nothing beyond its three
 clicks: giving it a fourth noise would be the machine congratulating you for
 nothing.
 
+A jackpot also gets the only animation in here: a swell that rolls left to
+right across the reels and comes back round three times, while the word
+itself pushes its letters apart. Scale rather than colour — the reels have
+already gone accent by then, and a second colour change would land on top of
+the first.
+
 The speaker in the panel header silences all of it, and the choice is
 remembered. It is the only thing this plugin persists.
 
