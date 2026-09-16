@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "mrhogun.slots",
+  "name": "Slots",
+  "version": "1.0.0",
+  "author": "MrHogun",
+  "license": "MIT",
+  "description": "A slot machine for the Omarchy bar. Three reels, honest odds, and the last spin left sitting in the bar.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Slots",
+    "description": "Three reels in a panel; the bar keeps the result of the last spin.",
+    "category": "Fun",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
