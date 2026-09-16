@@ -32,8 +32,10 @@ nothing.
 The speaker in the panel header silences all of it, and the choice is
 remembered. It is the only thing this plugin persists.
 
-The three sounds are generated, not sampled — plain sine tones with a short
-attack and an exponential tail, written straight to WAV. They are a few
+A win is a four-note arpeggio climbing to the octave; a jackpot is a six-note
+run that lands on a held triad. The three sounds are generated, not sampled —
+sine tones with a second harmonic, a short attack and an exponential tail,
+written straight to WAV. They are a few
 kilobytes, they ship with the plugin, and they are played through `pw-play`,
 which PipeWire already provides.
 
@@ -88,6 +90,10 @@ omarchy plugin add https://github.com/MrHogun/omarchy-slots.git --enable
 - Symbols are `◆ ● ■ ▲ 7`, all of which JetBrains Mono Nerd Font actually
   has — checked against the font's cmap rather than assumed. `◇` is the idle
   face, hollow, so an untouched machine reads as idle rather than as a loss.
+- The header is the shell's own `PanelHero`, the component the tailscale,
+  dropbox and agents panels use — icon, title, a meta line and a slot for a
+  trailing control, which is where the mute sits. The running tally lives in
+  that meta line, so the stats need no row of their own.
 - The panel anchors under its widget instead of centring on the bar: it
   belongs to an icon on the right, and a popup opening in the middle of the
   screen loses the thread back to what opened it.

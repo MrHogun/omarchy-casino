@@ -178,34 +178,50 @@ Panel {
     // and the children centre inside it.
     width: parent.width
 
-    // ---- Title, with the mute control out on the right edge. Small caps and
-    //      letter-spaced, the way the stock panels label a section, rather
-    //      than a machine's nameplate.
-    Item {
+    // ---- Header, on the shell's own PanelHero — the same component the
+    //      tailscale, dropbox and agents panels use, so the title sits where
+    //      a title sits everywhere else and the mute rides in the slot meant
+    //      for a trailing control. Hand-rolling it was what made this corner
+    //      look unlike the rest of the desktop.
+    PanelHero {
       width: parent.width
-      height: Math.max(title.implicitHeight, muteToggle.height)
+      title: "Slots"
+      // The meta line carries the running tally, which is why the stats no
+      // longer need a row of their own at the bottom.
+      meta: root.spinning
+        ? "Spinning"
+        : (Machine.statsLabel(root.stats) || "Nothing ventured")
+      foreground: root.contentForeground
+      fontFamily: root.contentFontFamily
 
-      Text {
-        id: title
-        textFormat: Text.PlainText
-        anchors.centerIn: parent
-        text: "SLOTS"
-        color: Qt.darker(root.contentForeground, 1.4)
-        font.family: root.contentFontFamily
-        font.pixelSize: Style.font.caption
-        font.letterSpacing: 2
+      iconComponent: Component {
+        Text {
+          textFormat: Text.PlainText
+          text: "7"
+          color: root.won ? Color.accent : root.contentForeground
+          font.family: root.contentFontFamily
+          font.pixelSize: Style.font.display
+        }
       }
 
-      PanelActionButton {
-        id: muteToggle
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-        iconText: root.muted ? "󰝟" : "󰕾"
-        tooltipText: root.muted ? "Unmute" : "Mute"
-        foreground: root.muted ? Qt.darker(root.contentForeground, 2.0) : root.contentForeground
-        fontFamily: root.contentFontFamily
-        onClicked: root.toggleMuted()
+      trailingControl: Component {
+        PanelActionButton {
+          iconText: root.muted ? "󰝟" : "󰕾"
+          tooltipText: root.muted ? "Unmute" : "Mute"
+          foreground: root.muted ? Qt.darker(root.contentForeground, 2.0) : root.contentForeground
+          fontFamily: root.contentFontFamily
+          onClicked: root.toggleMuted()
+        }
       }
+    }
+
+    // The hairline the stock panels rule under their hero, so the header
+    // reads as a header here too and not as the first item of a list.
+    Rectangle {
+      width: parent.width
+      height: Style.spacing.hairline
+      color: root.contentForeground
+      opacity: 0.1
     }
 
     // ---- The reels.
@@ -322,18 +338,6 @@ Panel {
       font.letterSpacing: 1
     }
 
-    Text {
-      textFormat: Text.PlainText
-      width: parent.width
-      horizontalAlignment: Text.AlignHCenter
-      wrapMode: Text.WordWrap
-      visible: text !== ""
-      text: Machine.statsLabel(root.stats)
-      color: Qt.darker(root.contentForeground, 1.8)
-      font.family: root.contentFontFamily
-      font.pixelSize: Style.font.caption
-      font.letterSpacing: 1
-    }
   }
 
   }
