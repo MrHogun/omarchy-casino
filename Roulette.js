@@ -90,7 +90,13 @@ function resultLabel(betKey, number, chosenNumber) {
 // which is pixel-for-pixel identical because the copies are, and the next spin
 // starts with the same runway. That is what keeps the travel long without the
 // strip having to be endless.
-var LAPS = 4
+//
+// The fifth copy is runway *after* the landing one, and it is not spare. The
+// wheel's last pockets — 3 and 26 — land on the final cells of their lap, and
+// with nothing written past them the right of the marker rendered empty until
+// the strip was pulled back on settling. Which looked exactly like the zero
+// refusing to appear until the wheel stopped, because that is what it was.
+var LAPS = 5
 var REST_LAP = 1
 
 function strip() {
