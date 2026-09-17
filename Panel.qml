@@ -373,7 +373,7 @@ Panel {
             if (root.hostWidget) {
               if ("lastPlayed" in root.hostWidget) root.hostWidget.lastPlayed = "blackjack"
               if ("lastTotal" in root.hostWidget)
-                root.hostWidget.lastTotal = Blackjack.handValue(blackjackView.playerCards).total
+                root.hostWidget.lastTotal = blackjackView.finishedTotal
               if ("lastWon" in root.hostWidget) root.hostWidget.lastWon = blackjackView.won
             }
           }

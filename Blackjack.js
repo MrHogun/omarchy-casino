@@ -75,6 +75,46 @@ function dealerShouldHit(cards) {
   return v.total < 17
 }
 
+// ---- Splitting.
+//
+// Any two cards of equal *value* split, so a K and a Q may be parted the way
+// most tables allow — though splitting twenty is a way of turning a winning
+// hand into two mediocre ones, and the table will let you do it.
+//
+// Up to four hands, which is the usual limit, and split aces take exactly one
+// card each and stop. That last rule is what stops aces being the free money
+// they would otherwise be, and it is why A-A split into two hands drawing a
+// ten each is two twenty-ones and not two blackjacks.
+var MAX_HANDS = 4
+
+function canSplit(cards, handCount) {
+  if (!cards || cards.length !== 2) return false
+  if (handCount >= MAX_HANDS) return false
+  return cardValue(cards[0]) === cardValue(cards[1])
+}
+
+function isAcePair(cards) {
+  return cards && cards.length === 2 && cards[0].rank === 0 && cards[1].rank === 0
+}
+
+// A hand that came out of a split can reach 21, but never blackjack: a
+// blackjack is a two-card 21 dealt to you, and one of those two was chosen.
+function settleHand(playerCards, dealerCards, fromSplit) {
+  var player = handValue(playerCards).total
+  var dealer = handValue(dealerCards).total
+  var playerBj = !fromSplit && isBlackjack(playerCards)
+  var dealerBj = isBlackjack(dealerCards)
+
+  if (playerBj && dealerBj) return "push"
+  if (playerBj) return "blackjack"
+  if (player > 21) return "bust"
+  if (dealerBj) return "lose"
+  if (dealer > 21) return "win"
+  if (player > dealer) return "win"
+  if (player < dealer) return "lose"
+  return "push"
+}
+
 function settle(playerCards, dealerCards) {
   var player = handValue(playerCards).total
   var dealer = handValue(dealerCards).total
@@ -114,12 +154,52 @@ function totalLabel(cards, hideSecond) {
   }
   var h = handValue(cards)
   if (h.total > 21) return h.total + " BUST"
+  // "Soft" names a total that can still take a card without busting, which
+  // twenty-one cannot. Nobody at a table has ever called one a soft 21.
+  if (h.total === 21) return "21"
   return h.soft ? ("SOFT " + h.total) : String(h.total)
 }
 
 // Printed under the table, the way the odds are on the other two machines.
 function rulesLabel() {
   return "6 DECKS · DEALER STANDS SOFT 17 · 3:2"
+}
+
+// What a discard tray tells you at a real table, in the one number that
+// matters for it: how much shoe is left. A running count is worth nothing
+// without it — eight spare tens across two remaining decks is a real edge and
+// the same eight across five is nearly none, which is why counters divide by
+// exactly this.
+// How much of the shoe is still to come, 0..1 — the tray drawn from it.
+function shoeRemaining(shoe) {
+  if (!shoe) return 0
+  return Math.max(0, Math.min(1, shoe.length / (DECKS * 52)))
+}
+
+// How many decks are still to come, as a real number — 6.0 down to 1.5.
+function decksLeft(shoe) {
+  if (!shoe) return 0
+  return shoe.length / 52
+}
+
+// The deck the cut card sits in: reshuffle comes at a quarter of the shoe.
+function cutAtDecks() {
+  return DECKS * PENETRATION
+}
+
+function shoeLabel(shoe) {
+  if (!shoe || shoe.length === 0) return ""
+  var decks = shoe.length / 52
+  return (Math.round(decks * 10) / 10).toFixed(1) + " DECKS LEFT"
+}
+
+// One line for a hand, several joined for a split.
+function handsSummary(results) {
+  if (!results || results.length === 0) return ""
+  if (results.length === 1) return outcomeLabel(results[0])
+  var out = []
+  for (var i = 0; i < results.length; i++) out.push(outcomeLabel(results[i]))
+  return out.join(" · ")
 }
 
 function emptyStats() {
