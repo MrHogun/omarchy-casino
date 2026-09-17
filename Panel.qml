@@ -114,6 +114,8 @@ Panel {
     rouletteView.stats = Roulette.emptyStats()
     rouletteView.outcome = ""
     rouletteView.landed = -1
+    if (root.hostWidget && "lastNumber" in root.hostWidget)
+      root.hostWidget.lastNumber = -1
     if (root.hostWidget && "lastReels" in root.hostWidget)
       root.hostWidget.lastReels = slotsView.reels
     if (root.hostWidget && "lastWon" in root.hostWidget)
@@ -293,6 +295,7 @@ Panel {
           onStatsUpdated: {
             root.saveStats()
             if (root.hostWidget) {
+              if ("lastPlayed" in root.hostWidget) root.hostWidget.lastPlayed = "slots"
               if ("lastReels" in root.hostWidget) root.hostWidget.lastReels = slotsView.reels
               if ("lastWon" in root.hostWidget) root.hostWidget.lastWon = slotsView.won
             }
@@ -306,7 +309,20 @@ Panel {
           foreground: root.contentForeground
           fontFamily: root.contentFontFamily
           onRequestSound: function(name) { root.play(name) }
-          onStatsUpdated: root.saveStats()
+          onStatsUpdated: {
+            root.saveStats()
+            if (root.hostWidget) {
+              if ("lastPlayed" in root.hostWidget) root.hostWidget.lastPlayed = "roulette"
+              if ("lastNumber" in root.hostWidget)
+                root.hostWidget.lastNumber = rouletteView.landed
+              if ("lastNumberColor" in root.hostWidget)
+                root.hostWidget.lastNumberColor = rouletteView.landed >= 0
+                  ? rouletteView.barColorFor(rouletteView.landed)
+                  : root.contentForeground
+              if ("lastWon" in root.hostWidget)
+                root.hostWidget.lastWon = rouletteView.won
+            }
+          }
         }
       }
     }

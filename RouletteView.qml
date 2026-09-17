@@ -42,6 +42,16 @@ Item {
     return Qt.darker(root.foreground, 3.0)
   }
 
+  // The same colours, but for the bar. On the strip a black pocket is drawn
+  // dimmed against its neighbours; in the bar that same dimming would be a
+  // number nobody can read, so there it wears the bar's own ink.
+  function barColorFor(n) {
+    var c = Roulette.colorOf(n)
+    if (c === "green") return "#00a22b"
+    if (c === "red") return "#e64343"
+    return root.foreground
+  }
+
   function restX(number) {
     return viewport.width / 2 - (Roulette.stripRestIndex(number) * root.cellWidth + root.cellWidth / 2)
   }

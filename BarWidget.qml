@@ -18,8 +18,22 @@ BarWidget {
   // Written back by the panel when a spin settles.
   property var lastReels: [Machine.IDLE, Machine.IDLE, Machine.IDLE]
   property bool lastWon: false
+  property int lastNumber: -1
+  property color lastNumberColor: Color.foreground
 
-  readonly property string displayText: lastReels.join(" ")
+  // The label follows the table last *played*, not the tab last opened.
+  // Switching tabs to look at the other game is not a result, and swapping the
+  // bar on it would report a spin that never happened.
+  property string lastPlayed: "slots"
+  readonly property bool showingSlots: lastPlayed !== "roulette"
+
+  // A bare number in a bar is just a number. The bullseye is a wheel with a
+  // ball in it, which is the shortest way to say which machine produced the
+  // figure beside it — and it doubles as the resting face before the first
+  // spin, where three hollow reels would be a lie about what was played.
+  readonly property string displayText: showingSlots
+    ? lastReels.join(" ")
+    : (lastNumber >= 0 ? ("◎ " + lastNumber) : "◎")
 
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   readonly property bool spinning: panelLoader.item ? panelLoader.item.spinning === true : false
@@ -82,12 +96,15 @@ BarWidget {
     horizontalMargin: 8.75
     verticalPadding: 8.75
 
-    // A win is worth one beat of the theme's accent in the bar and nothing
-    // after it: the result stays readable, and the bar goes back to being a
-    // bar. Middle click spins without opening anything.
-    foreground: root.lastWon && !root.spinning
-      ? Color.accent
-      : (root.bar ? root.bar.barForeground : Color.foreground)
+    // A win is worth one beat of the theme's accent, and it outranks the
+    // pocket colour — the fact that you won matters more than what it landed
+    // on. Failing that, roulette wears its pocket's colour and slots wear the
+    // bar's own.
+    foreground: {
+      if (root.lastWon && !root.spinning) return Color.accent
+      if (!root.showingSlots && root.lastNumber >= 0) return root.lastNumberColor
+      return root.bar ? root.bar.barForeground : Color.foreground
+    }
 
     onPressed: function(b) {
       if (b === Qt.MiddleButton) { root.open(); root.spin() }
