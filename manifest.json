@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "mrhogun.slots",
   "name": "Casino",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "author": "MrHogun",
   "license": "MIT",
-  "description": "A casino for the Omarchy bar: slots and European roulette, honest odds, nothing staked.",
+  "description": "A casino for the Omarchy bar: slots, European roulette and blackjack. Honest odds, nothing staked.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Casino",
-    "description": "Slots and roulette in a panel; the bar keeps the last spin.",
+    "description": "Slots, roulette and blackjack in a panel; the bar keeps the last result.",
     "category": "Fun",
     "allowMultiple": false,
     "defaultSection": "right",
@@ -38,7 +38,8 @@
         "defaultValue": "slots",
         "options": [
           "slots",
-          "roulette"
+          "roulette",
+          "blackjack"
         ]
       }
     ]

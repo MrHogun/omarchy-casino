@@ -1,6 +1,6 @@
 # Casino
 
-Slots and European roulette for the Omarchy bar. Honest odds, printed on both
+Slots, European roulette and blackjack for the Omarchy bar. Honest odds, printed on both
 machines, and nothing staked — you play for the pull, not for a balance.
 
 Built to look like the rest of Omarchy rather than like a casino: no felt, no
@@ -67,6 +67,31 @@ honest reason to show a number you cannot spend.
 on a European wheel, and leaving it out would be the same dishonesty this
 project keeps refusing elsewhere. It says `ZERO TAKES IT` when it happens.
 
+## Blackjack
+
+Six decks, dealer stands on soft 17, reshuffled with a quarter of the shoe
+left — the way a table does it. Running a shoe to the last card makes the
+final hands predictable to anyone keeping track, which is a real edge and one
+worth not handing out quietly.
+
+`HIT`, `STAND` and `DOUBLE`. With nothing staked a double is not a bet, it is
+a commitment: exactly one more card and the hand is over. That still changes
+what you should do, which is the part worth keeping. **No split** — it needs a
+second hand, a second set of controls and a second outcome, and it did not
+earn that much of a 380px panel.
+
+Cards carry a rank and a colour and no suit. Not because the font is short of
+three of them, though it is — because nothing in blackjack depends on a suit.
+No payout, no decision, no rule. Drawing one would be decoration pretending to
+be information.
+
+A hole card stays down until the hand is over, and the dealer's total is the
+up card alone until then. Showing the real total while a card is face down
+would be the house telling you what it is holding.
+
+The dealer plays out only a live hand. Drawing to a busted player is a ritual
+the house performs for the cameras, not a rule.
+
 ## Nothing is nudged
 
 Neither machine has near-miss logic. A real slot machine shows you two sevens
@@ -97,8 +122,10 @@ The speaker in the header silences all of it.
 
 ## What it tracks
 
-Each table keeps its own tally: spins, wins, the rare thing (jackpots,
-straight ups), and **driest** — the longest run without a win. That last one
+Each table keeps its own tally: spins or hands, wins, the rare thing
+(jackpots, straight ups, blackjacks), and **driest** — the longest run without
+a win. A push is neither a win nor a loss, so a streak carries across it
+rather than resetting on a hand that never resolved. That last one
 is the honest statistic for machines like these, and the only one that is
 actually fun to watch climb.
 

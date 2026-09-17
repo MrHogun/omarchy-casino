@@ -5,6 +5,7 @@ import qs.Commons
 import qs.Ui
 import "Machine.js" as Machine
 import "Roulette.js" as Roulette
+import "Blackjack.js" as Blackjack
 
 // The casino: two games under one header.
 //
@@ -31,7 +32,9 @@ Panel {
   // ---- Which game. Remembered, because reopening the panel onto the other
   //      game every time is a small tax on the thing being a toy.
   readonly property string game: setting("game", "slots")
-  readonly property bool onSlots: game !== "roulette"
+  readonly property bool onSlots: game === "slots"
+  readonly property bool onRoulette: game === "roulette"
+  readonly property bool onBlackjack: game === "blackjack"
   function selectGame(next) { root.persistSettings({ game: next }) }
 
   readonly property bool muted: setting("muted", false) === true
@@ -94,6 +97,11 @@ Panel {
           spins: rl.spins || 0, wins: rl.wins || 0,
           straights: rl.straights || 0, streak: rl.streak || 0, worst: rl.worst || 0
         }
+        var bj = loaded.blackjack
+        if (bj && typeof bj.hands === "number") blackjackView.stats = {
+          hands: bj.hands || 0, wins: bj.wins || 0, pushes: bj.pushes || 0,
+          blackjacks: bj.blackjacks || 0, streak: bj.streak || 0, worst: bj.worst || 0
+        }
       } catch (e) {
         console.log("mrhogun.slots: stats unreadable, starting fresh: " + e)
       }
@@ -103,7 +111,8 @@ Panel {
   function saveStats() {
     statsFile.setText(JSON.stringify({
       slots: slotsView.stats,
-      roulette: rouletteView.stats
+      roulette: rouletteView.stats,
+      blackjack: blackjackView.stats
     }, null, 2) + "\n")
   }
 
@@ -112,6 +121,11 @@ Panel {
     slotsView.result = ""
     slotsView.reels = [Machine.IDLE, Machine.IDLE, Machine.IDLE]
     rouletteView.stats = Roulette.emptyStats()
+    blackjackView.stats = Blackjack.emptyStats()
+    blackjackView.result = ""
+    blackjackView.playerCards = []
+    blackjackView.dealerCards = []
+    blackjackView.inHand = false
     rouletteView.outcome = ""
     rouletteView.landed = -1
     if (root.hostWidget && "lastNumber" in root.hostWidget)
@@ -123,12 +137,22 @@ Panel {
     root.saveStats()
   }
 
-  readonly property bool spinning: onSlots ? slotsView.spinning : rouletteView.spinning
-  readonly property int totalSpins: slotsView.stats.spins + rouletteView.stats.spins
+  // Blackjack has no spin to be busy during; a hand is only ever waiting on
+  // you, so the tabs stay live on that table.
+  readonly property bool spinning: onSlots ? slotsView.spinning
+                                 : (onRoulette ? rouletteView.spinning : false)
+  readonly property int totalSpins: slotsView.stats.spins
+                                  + rouletteView.stats.spins
+                                  + blackjackView.stats.hands
 
+  // The one verb the bar and the keyboard have. On a table that deals rather
+  // than spins it means deal, or hit if a hand is already open — the thing the
+  // player would have pressed anyway.
   function spin() {
     if (root.onSlots) slotsView.spin()
-    else rouletteView.spin()
+    else if (root.onRoulette) rouletteView.spin()
+    else if (blackjackView.inHand) blackjackView.hit()
+    else blackjackView.deal()
   }
 
   // ---- Panel contract, the shape the stock panels use.
@@ -163,12 +187,15 @@ Panel {
       PanelHero {
         width: parent.width
         title: "Casino"
-        meta: root.onSlots
-          ? (Machine.statsLabel(slotsView.stats) || "Nothing ventured")
-          : (Roulette.statsLabel(rouletteView.stats) || "Nothing ventured")
-        detail: root.onSlots
-          ? Machine.jackpotBadge(slotsView.stats)
-          : Roulette.straightBadge(rouletteView.stats)
+        meta: {
+          var label = root.onSlots ? Machine.statsLabel(slotsView.stats)
+                    : root.onRoulette ? Roulette.statsLabel(rouletteView.stats)
+                    : Blackjack.statsLabel(blackjackView.stats)
+          return label || "Nothing ventured"
+        }
+        detail: root.onSlots ? Machine.jackpotBadge(slotsView.stats)
+              : root.onRoulette ? Roulette.straightBadge(rouletteView.stats)
+              : Blackjack.blackjackBadge(blackjackView.stats)
         // Spinning dims the tally rather than replacing it: it does not stop
         // being true while the wheel turns, and swapping two strings of
         // different lengths made the line jump.
@@ -180,10 +207,14 @@ Panel {
         iconComponent: Component {
           Text {
             textFormat: Text.PlainText
-            text: root.onSlots ? "7" : "0"
+            // One glyph per table, each the thing that table is about: the
+            // seven, the zero, and the ace.
+            text: root.onSlots ? "7" : (root.onRoulette ? "0" : "A")
             color: root.onSlots
               ? (slotsView.won ? Color.accent : root.contentForeground)
-              : (rouletteView.won ? Color.accent : "#00a22b")
+              : root.onRoulette
+                ? (rouletteView.won ? Color.accent : "#00a22b")
+                : (blackjackView.won ? Color.accent : "#e64343")
             font.family: root.contentFontFamily
             font.pixelSize: Style.font.display
           }
@@ -228,14 +259,18 @@ Panel {
       //      buttons: the panel has two games, not a navigation problem.
       Row {
         anchors.horizontalCenter: parent.horizontalCenter
-        spacing: Style.space(20)
+        spacing: Style.space(14)
 
         Repeater {
-          model: [{ key: "slots", label: "SLOTS" }, { key: "roulette", label: "ROULETTE" }]
+          model: [
+            { key: "slots", label: "SLOTS" },
+            { key: "roulette", label: "ROULETTE" },
+            { key: "blackjack", label: "BLACKJACK" }
+          ]
 
           Item {
             required property var modelData
-            readonly property bool active: (modelData.key === "slots") === root.onSlots
+            readonly property bool active: modelData.key === root.game
 
             width: tabLabel.implicitWidth
             height: tabLabel.implicitHeight + Style.space(6)
@@ -281,7 +316,9 @@ Panel {
       //      switching away and back should not reset the reels you left.
       Item {
         width: parent.width
-        height: root.onSlots ? slotsView.implicitHeight : rouletteView.implicitHeight
+        height: root.onSlots ? slotsView.implicitHeight
+              : root.onRoulette ? rouletteView.implicitHeight
+              : blackjackView.implicitHeight
         Behavior on height { NumberAnimation { duration: 160; easing.type: Easing.OutQuad } }
         clip: true
 
@@ -305,7 +342,7 @@ Panel {
         RouletteView {
           id: rouletteView
           width: parent.width
-          visible: !root.onSlots
+          visible: root.onRoulette
           foreground: root.contentForeground
           fontFamily: root.contentFontFamily
           onRequestSound: function(name) { root.play(name) }
@@ -321,6 +358,23 @@ Panel {
                   : root.contentForeground
               if ("lastWon" in root.hostWidget)
                 root.hostWidget.lastWon = rouletteView.won
+            }
+          }
+        }
+        BlackjackView {
+          id: blackjackView
+          width: parent.width
+          visible: root.onBlackjack
+          foreground: root.contentForeground
+          fontFamily: root.contentFontFamily
+          onRequestSound: function(name) { root.play(name) }
+          onStatsUpdated: {
+            root.saveStats()
+            if (root.hostWidget) {
+              if ("lastPlayed" in root.hostWidget) root.hostWidget.lastPlayed = "blackjack"
+              if ("lastTotal" in root.hostWidget)
+                root.hostWidget.lastTotal = Blackjack.handValue(blackjackView.playerCards).total
+              if ("lastWon" in root.hostWidget) root.hostWidget.lastWon = blackjackView.won
             }
           }
         }

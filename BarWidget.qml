@@ -20,6 +20,7 @@ BarWidget {
   property bool lastWon: false
   property int lastNumber: -1
   property color lastNumberColor: Color.foreground
+  property int lastTotal: -1
 
   // The label follows the table last *played*, not the tab last opened.
   // Switching tabs to look at the other game is not a result, and swapping the
@@ -31,9 +32,14 @@ BarWidget {
   // ball in it, which is the shortest way to say which machine produced the
   // figure beside it — and it doubles as the resting face before the first
   // spin, where three hollow reels would be a lie about what was played.
-  readonly property string displayText: showingSlots
-    ? lastReels.join(" ")
-    : (lastNumber >= 0 ? ("◎ " + lastNumber) : "◎")
+  // Each table gets a mark and the figure that table produces: the wheel's
+  // bullseye and its pocket, the ace and the total you finished on. Slots
+  // need no mark — the three faces are unmistakably theirs.
+  readonly property string displayText: {
+    if (lastPlayed === "roulette") return lastNumber >= 0 ? ("◎ " + lastNumber) : "◎"
+    if (lastPlayed === "blackjack") return lastTotal > 0 ? ("A " + lastTotal) : "A"
+    return lastReels.join(" ")
+  }
 
   readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
   readonly property bool spinning: panelLoader.item ? panelLoader.item.spinning === true : false
@@ -102,7 +108,7 @@ BarWidget {
     // bar's own.
     foreground: {
       if (root.lastWon && !root.spinning) return Color.accent
-      if (!root.showingSlots && root.lastNumber >= 0) return root.lastNumberColor
+      if (root.lastPlayed === "roulette" && root.lastNumber >= 0) return root.lastNumberColor
       return root.bar ? root.bar.barForeground : Color.foreground
     }
 
