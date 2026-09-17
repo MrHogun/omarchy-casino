@@ -29,6 +29,13 @@ Item {
   property string outcome: ""
 
   readonly property bool won: outcome === "WON" || outcome === "STRAIGHT UP"
+
+  // Stepped, not slid. The strip moves one pocket at a time and each step is
+  // the tick you hear — a continuous slide had the sound running on its own
+  // timer beside the motion, which is why the two never quite agreed.
+  property int stepIndex: 0
+  property int stepCount: 0
+  readonly property int travelMs: 3200
   readonly property var pockets: Roulette.strip()
   readonly property int cellWidth: Style.space(44)
   readonly property int lapPixels: Roulette.lapLength() * cellWidth
@@ -52,9 +59,11 @@ Item {
     return root.foreground
   }
 
-  function restX(number) {
-    return viewport.width / 2 - (Roulette.stripRestIndex(number) * root.cellWidth + root.cellWidth / 2)
-  }
+  // Where the strip sits between spins: the resting lap, with the pocket
+  // under the marker.
+  readonly property real restBase: viewport.width / 2
+    - (Roulette.stripRestIndex(root.landed >= 0 ? root.landed : 0) * root.cellWidth
+       + root.cellWidth / 2)
 
   function spin() {
     if (root.spinning) return
@@ -62,41 +71,44 @@ Item {
     root.outcome = ""
 
     var number = Roulette.randomPocket()
-    var index = Roulette.stripLandingIndex(number)
-    var target = viewport.width / 2 - (index * root.cellWidth + root.cellWidth / 2)
+    var from = root.landed >= 0 ? root.landed : 0
+
+    // Always at least one full lap, then however much further the target
+    // sits. Without the lap a pocket two along from the last one would be a
+    // two-step twitch rather than a spin.
+    var delta = (Roulette.wheelIndex(number) - Roulette.wheelIndex(from) + 37) % 37
+    root.stepCount = 37 + delta
+    root.stepIndex = 0
 
     root.landed = -1
-    slide.to = target
-    slide.restart()
-    ballTick.interval = 40
-    ballTick.restart()
-
     settle.pocket = number
+    stepTimer.interval = root.stepInterval(0)
+    stepTimer.restart()
   }
 
-  // The ball, slowing as the wheel does. Each tick stretches the gap to the
-  // next by a tenth, which is what a decelerating clatter sounds like — a
-  // fixed interval would sound like a metronome bolted to a wheel.
+  // The schedule that makes it decelerate and still take the same time
+  // whatever distance it has to cover. Positions are eased, not intervals:
+  // step k lands at travelMs·(1 − √(1 − k/steps)), so the gaps between them
+  // stretch on their own and the last one is the long, deciding pause.
+  function stepInterval(k) {
+    if (root.stepCount <= 0) return 40
+    var t0 = root.travelMs * (1 - Math.sqrt(1 - k / root.stepCount))
+    var t1 = root.travelMs * (1 - Math.sqrt(1 - (k + 1) / root.stepCount))
+    return Math.max(16, Math.round(t1 - t0))
+  }
+
   Timer {
-    id: ballTick
-    repeat: true
-    interval: 40
+    id: stepTimer
+    repeat: false
     onTriggered: {
+      root.stepIndex++
+      strip.x = root.restBase - root.stepIndex * root.cellWidth
       root.requestSound("tick")
-      interval = Math.round(interval * 1.11)
-      if (interval > 420) stop()
-    }
-  }
 
-  NumberAnimation {
-    id: slide
-    target: strip
-    property: "x"
-    duration: 3400
-    // Quint rather than Cubic: the last second should crawl, because that is
-    // where the whole thing is decided.
-    easing.type: Easing.OutQuint
-    onFinished: settle.apply()
+      if (root.stepIndex >= root.stepCount) { settle.apply(); return }
+      interval = root.stepInterval(root.stepIndex)
+      restart()
+    }
   }
 
   QtObject {
@@ -104,7 +116,7 @@ Item {
     property int pocket: 0
 
     function apply() {
-      ballTick.stop()
+      stepTimer.stop()
       root.landed = settle.pocket
       root.outcome = Roulette.resultLabel(root.betKey, settle.pocket, root.chosenNumber)
       var didWin = Roulette.wins(root.betKey, settle.pocket, root.chosenNumber)
@@ -115,9 +127,10 @@ Item {
       if (straight) root.requestSound("jackpot")
       else if (didWin) root.requestSound("win")
 
-      // Shift back the laps just travelled. The copies are identical, so this
-      // is invisible, and it hands the next spin the same runway.
-      strip.x += Roulette.settleShift() * root.cellWidth
+      // One lap was travelled, so one lap comes back. The copies are
+      // identical, so nothing moves on screen, and the next spin starts with
+      // the same runway as this one had.
+      strip.x = root.restBase
     }
   }
 
@@ -139,7 +152,7 @@ Item {
         spacing: 0
         // Opens resting on the zero of the second lap, so there is a full lap
         // of wheel to the left of the marker rather than an empty half.
-        x: viewport.width / 2 - (Roulette.stripRestIndex(0) * root.cellWidth + root.cellWidth / 2)
+        x: root.restBase
 
         Repeater {
           model: root.pockets
@@ -169,6 +182,34 @@ Item {
               }
             }
           }
+        }
+      }
+
+      // The ends fade into the panel instead of being cut off at the
+      // viewport edge. A hard edge says the strip stops there; a fade says it
+      // carries on past the frame, which is what a wheel does — and it is the
+      // difference between a moving list and something turning.
+      Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: Style.space(30)
+        gradient: Gradient {
+          orientation: Gradient.Horizontal
+          GradientStop { position: 0.0; color: Color.popups.background }
+          GradientStop { position: 1.0; color: "transparent" }
+        }
+      }
+
+      Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: Style.space(30)
+        gradient: Gradient {
+          orientation: Gradient.Horizontal
+          GradientStop { position: 0.0; color: "transparent" }
+          GradientStop { position: 1.0; color: Color.popups.background }
         }
       }
 

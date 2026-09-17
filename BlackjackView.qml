@@ -78,13 +78,19 @@ Item {
   readonly property bool canDouble: canHit && activeHand.cards.length === 2
   readonly property bool canSplit: canHit && Blackjack.canSplit(activeHand.cards, hands.length)
 
-  readonly property int cardWidth: Style.space(38)
-  readonly property int cardHeight: Style.space(52)
-  // The label column is fixed so the cards get a known width to fit into
-  // instead of racing the text for room.
-  readonly property int labelWidth: Style.space(112)
+  // Back to the size they were before splitting arrived. They were shrunk to
+  // make room for four hands, and then the fit logic made that unnecessary: a
+  // short hand — which is most of them — gets the full size, and a long one
+  // scales itself down.
+  readonly property int cardWidth: Style.space(42)
+  readonly property int cardHeight: Style.space(58)
 
   implicitHeight: column.implicitHeight
+
+  // The shoe exists before the first card is drawn from it, so the tray is
+  // part of the laid table rather than something that appears mid-deal and
+  // shoves the panel down a line.
+  Component.onCompleted: if (root.shoe.length === 0) root.shoe = Blackjack.newShoe()
 
   function cardColor(card) {
     if (!card) return Qt.darker(root.foreground, 2.4)
@@ -270,11 +276,19 @@ Item {
     // indices stay visible, and these cards carry their rank in the middle,
     // where an overlap would cover exactly the thing worth reading.
     readonly property real gap: Style.space(5)
+    // Scales both ways. It only ever shrank before, which kept long hands on
+    // the panel and left a two-card hand sitting in ninety pixels of a
+    // three-hundred-and-eighty pixel row — correct, and empty. Growing up to a
+    // cap means the table is always as full as the hand allows.
     readonly property real fit: {
       var n = hand.cards.length
       if (n === 0 || hand.maxWidth <= 0) return 1
       var needed = n * root.cardWidth + (n - 1) * hand.gap
-      return needed <= hand.maxWidth ? 1 : hand.maxWidth / needed
+      // The ceiling is what stops two cards becoming two billboards — which
+      // at 1.8 is exactly what they became. The room is bought back by
+      // centring the hand and spreading the line above it; the cards only
+      // need to be a little larger than their base, not twice it.
+      return Math.max(0.4, Math.min(1.2, hand.maxWidth / needed))
     }
 
     spacing: Math.round(hand.gap * hand.fit)
@@ -287,26 +301,35 @@ Item {
         required property var modelData
         required property int index
 
-        readonly property bool facedown: hand.hideSecond && index === 1
+        // A null card is a place at the table rather than a card: before the
+        // first deal the felt should look ready, not broken.
+        readonly property bool ghost: card.modelData === null
+        readonly property bool facedown: !ghost && hand.hideSecond && index === 1
 
         width: Math.round(root.cardWidth * hand.fit)
         height: Math.round(root.cardHeight * hand.fit)
+        // A hit changes how much room each card gets, so the others settle
+        // into the new size rather than snapping to it.
+        Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
+        Behavior on height { NumberAnimation { duration: 180; easing.type: Easing.OutQuad } }
         radius: Style.cornerRadius
         color: "transparent"
         border.width: Style.spacing.hairline
-        border.color: hand.celebrate
+        border.color: hand.celebrate && !ghost
           ? Color.accent
-          : (facedown
+          : (ghost || facedown
               ? Style.normalBorderFor(root.foreground, root.foreground)
               : root.cardColor(modelData))
 
         Text {
           textFormat: Text.PlainText
           anchors.centerIn: parent
-          text: card.facedown ? "◇" : Blackjack.rankLabel(card.modelData)
-          color: hand.celebrate
+          text: (card.ghost || card.facedown) ? "◇" : Blackjack.rankLabel(card.modelData)
+          color: hand.celebrate && !card.ghost
             ? Color.accent
-            : (card.facedown ? Qt.darker(root.foreground, 2.4) : root.cardColor(card.modelData))
+            : ((card.ghost || card.facedown)
+                ? Qt.darker(root.foreground, 2.4)
+                : root.cardColor(card.modelData))
           font.family: root.fontFamily
           font.pixelSize: Math.max(Style.font.caption, Math.round(Style.font.subtitle * hand.fit))
         }
@@ -315,9 +338,10 @@ Item {
         // id: an animation is not a visual item, so `parent` inside one
         // resolves to nothing — write it that way and the opacity never leaves
         // zero and every card deals into thin air.
-        opacity: 0
-        transform: Translate { id: lift; y: Style.space(6) }
-        Component.onCompleted: { dealIn.start(); liftIn.start() }
+        // A place at the table is simply there; only a real card is dealt in.
+        opacity: ghost ? 0.35 : 0
+        transform: Translate { id: lift; y: ghost ? 0 : Style.space(6) }
+        Component.onCompleted: { if (!ghost) { dealIn.start(); liftIn.start() } }
 
         NumberAnimation {
           id: dealIn
@@ -369,77 +393,144 @@ Item {
   Column {
     id: column
     width: parent.width
-    spacing: Style.space(10)
+    spacing: Style.space(12)
 
     // ---- Dealer.
-    Item {
+    //
+    // The line sits above the cards rather than beside them. Beside them it
+    // shared a row with the hand and had to be cut to fit — which is how
+    // DOUBLED became an ellipsis pressed against the first card. Above, the
+    // line has the whole panel and so do the cards, and neither has to give
+    // the other room.
+    Column {
       width: parent.width
-      height: Math.max(dealerHand.implicitHeight, dealerLabel.implicitHeight)
+      spacing: Style.space(4)
 
-      Text {
-        id: dealerLabel
-        textFormat: Text.PlainText
-        width: root.labelWidth
-        elide: Text.ElideRight
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        text: "DEALER   " + Blackjack.totalLabel(root.dealerCards, root.holeDown)
-        color: Qt.darker(root.foreground, 1.7)
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        font.letterSpacing: 1
+      Item {
+        width: parent.width
+        height: dealerName.implicitHeight
+
+        Text {
+          id: dealerName
+          textFormat: Text.PlainText
+          anchors.left: parent.left
+          text: "DEALER"
+          color: Qt.darker(root.foreground, 1.7)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.letterSpacing: 1
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          anchors.right: parent.right
+          text: Blackjack.totalLabel(root.dealerCards, root.holeDown)
+          color: Qt.darker(root.foreground, 1.7)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          font.letterSpacing: 1
+        }
       }
 
+      // Centred, not left-aligned. Left-aligned was the fix for cards
+      // shuffling sideways on every hit, and the sizes animate now, so that
+      // movement is a settle rather than a jump — which buys back the
+      // composition: two hands on one axis, the way they sit on a table.
       Hand {
-        id: dealerHand
-        anchors.right: parent.right
-        cards: root.dealerCards
+        anchors.horizontalCenter: parent.horizontalCenter
+        cards: root.dealerCards.length > 0 ? root.dealerCards : [null, null]
         hideSecond: root.holeDown
-        maxWidth: parent.width - root.labelWidth
+        maxWidth: parent.width
       }
     }
 
-    // ---- The player's hands. One row each, because a split is two hands and
-    //      drawing them as one row of six cards is how you lose track of which
-    //      cards belong together.
+    // The table's own line. The dealer's side and the player's side are two
+    // places at one table, and nothing said so.
+    Rectangle {
+      width: parent.width
+      height: Style.spacing.hairline
+      color: root.foreground
+      opacity: 0.08
+    }
+
+    // ---- The player's hands. One block each, because a split is two hands
+    //      and drawing them as one row of six cards is how you lose track of
+    //      which cards belong together.
     Repeater {
       model: root.hands
 
-      Item {
+      Column {
         required property var modelData
         required property int index
 
         readonly property bool isActive: root.inHand && index === root.activeIndex
 
         width: column.width
-        height: Math.max(handCards.implicitHeight, handLabel.implicitHeight)
+        spacing: Style.space(4)
 
-        Text {
-          id: handLabel
-          textFormat: Text.PlainText
-          width: root.labelWidth
-          elide: Text.ElideRight
-          anchors.left: parent.left
-          anchors.verticalCenter: parent.verticalCenter
-          // The caret marks whose turn it is. With one hand there is no
-          // question and it stays out of the way.
-          text: (root.split ? ((isActive ? "▸ " : "  ") + "HAND " + (index + 1)) : "YOU")
-            + "   " + Blackjack.totalLabel(modelData.cards, false)
-            + (modelData.doubled ? "   DOUBLED" : "")
-            + (root.settled && root.split ? "   " + Blackjack.outcomeLabel(modelData.result) : "")
-          color: isActive || !root.split ? root.foreground : Qt.darker(root.foreground, 1.9)
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.letterSpacing: 1
+        // A ledger line rather than a label: who on the left, what they hold
+        // on the right, and the width between them doing the work instead of
+        // sitting empty.
+        Item {
+          width: parent.width
+          height: handName.implicitHeight
+
+          Text {
+            id: handName
+            textFormat: Text.PlainText
+            anchors.left: parent.left
+            text: root.split ? ((isActive ? "▸ " : "  ") + "HAND " + (index + 1)) : "YOU"
+            color: isActive || !root.split ? root.foreground : Qt.darker(root.foreground, 1.9)
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.letterSpacing: 1
+          }
+
+          Text {
+            textFormat: Text.PlainText
+            anchors.right: parent.right
+            text: Blackjack.totalLabel(modelData.cards, false)
+              + (modelData.doubled ? "   DOUBLED" : "")
+              + (root.settled && root.split ? "   " + Blackjack.outcomeLabel(modelData.result) : "")
+            color: root.settled && Blackjack.isWin(modelData.result)
+              ? Color.accent
+              : (isActive || !root.split ? root.foreground : Qt.darker(root.foreground, 1.9))
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.letterSpacing: 1
+          }
         }
 
         Hand {
-          id: handCards
-          anchors.right: parent.right
+          anchors.horizontalCenter: parent.horizontalCenter
           cards: modelData.cards
           celebrate: root.settled && modelData.result === "blackjack"
-          maxWidth: parent.width - root.labelWidth
+          maxWidth: parent.width
         }
+      }
+    }
+
+    // The player's place before the first deal, so the table is laid rather
+    // than blank.
+    Column {
+      width: parent.width
+      spacing: Style.space(4)
+      visible: root.hands.length === 0
+
+      Text {
+        textFormat: Text.PlainText
+        width: parent.width
+        text: "YOU"
+        color: Qt.darker(root.foreground, 2.0)
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.caption
+        font.letterSpacing: 1
+      }
+
+      Hand {
+        anchors.horizontalCenter: parent.horizontalCenter
+        cards: [null, null]
+        maxWidth: parent.width
       }
     }
 
@@ -588,6 +679,7 @@ Item {
       visible: root.shoe.length > 0
 
       Text {
+        id: shoeLabel
         anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
         text: Blackjack.shoeLabel(root.shoe)
@@ -600,7 +692,10 @@ Item {
       Item {
         id: tray
         anchors.verticalCenter: parent.verticalCenter
-        width: parent.width - parent.spacing - Style.space(96)
+        // Measured off the label rather than guessed at. The guess was 96px
+        // and "5.9 DECKS LEFT" sets about 98, so the row ran two pixels past
+        // the panel — which is all it takes to look broken.
+        width: parent.width - parent.spacing - shoeLabel.width
         height: Style.space(9)
 
         // Not `left`: Item already has one, FINAL, so that `anchors.left:

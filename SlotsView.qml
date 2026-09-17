@@ -75,7 +75,7 @@ Item {
   Column {
     id: column
     width: parent.width
-    spacing: Style.space(14)
+    spacing: Style.space(12)
 
     // ---- The reels.
     Row {
