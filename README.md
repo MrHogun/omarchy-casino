@@ -165,7 +165,7 @@ nothing to reset.
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/MrHogun/omarchy-slots.git --enable
+omarchy plugin add https://github.com/MrHogun/omarchy-casino.git --enable
 ```
 
 MIT.
