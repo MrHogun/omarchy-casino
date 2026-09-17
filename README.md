@@ -1,51 +1,27 @@
-# Slots
+# Casino
 
-A slot machine for the Omarchy bar. Three reels, honest odds, and the last
-spin left sitting in the bar where you will see it.
+Slots and European roulette for the Omarchy bar. Honest odds, printed on both
+machines, and nothing staked — you play for the pull, not for a balance.
 
-Built to look like the rest of Omarchy rather than like a slot machine: no
-cabinet, no gold, no chrome. Three quiet cells on the same spacing scale the
-calendar uses for its day grid, hairline borders, small caps, and the theme's
-own accent spent on the one thing worth colour — the row that just won.
+Built to look like the rest of Omarchy rather than like a casino: no felt, no
+gold, no chrome. Quiet cells on the same spacing scale the calendar uses for
+its day grid, hairline borders, small caps, and the theme's own accent spent
+on the one thing worth colour — whatever just won.
 
 ## Use
 
 | | |
 |---|---|
-| **Left click** | open the machine |
-| **Middle click** | spin without stopping to look at it first |
+| **Left click** | open the panel |
+| **Middle click** | spin the table you are on |
 | **Space / Return** | spin, while the panel has focus |
 | **Esc** | close |
 
-The bar label is the last spin's three symbols rather than an icon. An icon
-would say "there is a slot machine here" once and then say nothing all day;
-the result says the same thing and leaves the outcome where you can see it.
-A win tints it with the theme accent until the next spin.
+Two tabs switch between the tables, and the panel reopens on the one you left.
+The bar label is the last slots spin's three symbols rather than an icon: an
+icon says "there is a casino here" once and then says nothing all day.
 
-## Sound
-
-Each reel clicks as it stops, and a win gets a short rise — a jackpot gets
-three notes instead of two. A losing spin gets nothing beyond its three
-clicks: giving it a fourth noise would be the machine congratulating you for
-nothing.
-
-A jackpot also gets the only animation in here: a swell that rolls left to
-right across the reels and comes back round three times, while the word
-itself pushes its letters apart. Scale rather than colour — the reels have
-already gone accent by then, and a second colour change would land on top of
-the first.
-
-The speaker in the panel header silences all of it, and the choice is
-remembered. It is the only thing this plugin persists.
-
-A win is a four-note arpeggio climbing to the octave; a jackpot is a six-note
-run that lands on a held triad. The three sounds are generated, not sampled —
-sine tones with a second harmonic, a short attack and an exponential tail,
-written straight to WAV. They are a few
-kilobytes, they ship with the plugin, and they are played through `pw-play`,
-which PipeWire already provides.
-
-## The odds, which are printed on the machine
+## Slots
 
 Five symbols, three reels, every reel independent and uniform — 125 equally
 likely outcomes.
@@ -57,58 +33,87 @@ likely outcomes.
 | two of a kind | 60 in 125 | *so close* — pays nothing, and is only named |
 | anything else | 59 in 125 | nothing |
 
-Nothing is weighted, nothing is nudged, and there is **no near-miss logic**.
-A real machine shows you two sevens and a blank far more often than chance
-allows, because that is what keeps a hand on the lever. That is the one thing
-this deliberately does not copy — which is also why "two of a kind" pays
-nothing here. Calling half of all spins a win would make the machine feel
-generous while taking exactly as much.
+The reels stop one after another (620ms, 980ms, 1400ms). That stagger is the
+whole reason a slot machine is watchable — stopping them together resolves the
+question all at once, and the third reel is where the suspense lives.
 
-The odds are printed under the reels, because a machine that hides them is
-the other kind of machine.
+A jackpot gets the only animation in here: a swell that rolls left to right
+across the reels and back three times, while the word pushes its letters
+apart.
+
+## Roulette
+
+European, single zero. Thirty-seven pockets in the wheel's **real** order —
+not 0 to 36 in a line — so the numbers blurring past are the ones the wheel
+would actually show, reds and blacks alternating, highs and lows interleaved.
+
+Drawn as a strip rather than a disc. A wheel in a 380px panel gives each
+pocket about ten degrees, which is a ring of illegible numbers, and rotating
+the text to match only makes it worse. The strip is what every digital table
+uses instead: it reads at this width and it decelerates convincingly.
+
+| Bet | Odds | Chance |
+|---|---|---|
+| Red / Black | 1:1 | 48.6% |
+| Odd / Even | 1:1 | 48.6% |
+| 1–18 / 19–36 | 1:1 | 48.6% |
+| A number, straight up | 35:1 | 2.7% |
+
+Odds are quoted the way a table quotes them. With nothing staked they are not
+a payout — they are a statement of how long the odds are, which is the only
+honest reason to show a number you cannot spend.
+
+**Zero loses every outside bet.** That single pocket is the entire house edge
+on a European wheel, and leaving it out would be the same dishonesty this
+project keeps refusing elsewhere. It says `ZERO TAKES IT` when it happens.
+
+## Nothing is nudged
+
+Neither machine has near-miss logic. A real slot machine shows you two sevens
+and a blank far more often than chance allows, because that is what keeps a
+hand on the lever — and a real wheel is a real wheel, but the software ones
+are not always. That is the one thing deliberately not copied here.
+
+It is also why two of a kind pays nothing: calling half of all spins a win
+would make the machine feel generous while taking exactly as much.
+
+## Sound
+
+Reels click as they stop. The roulette ball clatters and slows — each tick
+stretches the gap to the next by a tenth, which is what deceleration sounds
+like; a fixed interval sounds like a metronome bolted to a wheel.
+
+A win is a four-note arpeggio climbing to the octave; a jackpot or a straight
+up is a six-note run landing on a held triad. A losing spin gets nothing
+beyond its own clicks — a further noise there would be the machine
+congratulating you for nothing.
+
+The sounds are generated, not sampled: sine tones with a second harmonic, a
+short attack and an exponential tail, written straight to WAV, a few kilobytes
+each. They play through `pw-play`, which PipeWire already provides, so this
+brings no audio dependency of its own.
+
+The speaker in the header silences all of it.
 
 ## What it tracks
 
-Spins, wins, jackpots, and **driest** — the longest run of spins without a
-win. That last one is the honest statistic for a machine like this, and the
-only one that is actually fun to watch climb.
+Each table keeps its own tally: spins, wins, the rare thing (jackpots,
+straight ups), and **driest** — the longest run without a win. That last one
+is the honest statistic for machines like these, and the only one that is
+actually fun to watch climb.
 
-Stats are kept in `~/.local/state/omarchy/slots.json` and survive a restart.
-They are written there rather than into the widget's `shell.json` entry: they
-change on every spin, and rewriting the bar's own config that often to record
-a toy's score would be the wrong thing to churn. Writes are atomic, so a spin
-landing mid-save cannot leave half a file behind.
+Stats live in `~/.local/state/omarchy/slots.json` and survive a restart. They
+are written there rather than into the widget's `shell.json` entry: they move
+on every spin, and rewriting the bar's own config that often to record a toy's
+score would be the wrong thing to churn. Writes are atomic.
 
-The `󰦛` in the header resets the tally, and dims itself when there is nothing
-to reset. Jackpots get a badge beside the title rather than a clause in the
-line, because they are the rare thing and a badge suits them better.
+The `󰦛` in the header resets both tallies, and dims itself when there is
+nothing to reset.
 
 ## Install
 
 ```sh
 omarchy plugin add https://github.com/MrHogun/omarchy-slots.git --enable
 ```
-
-## Notes on the build
-
-- The reels stop one after another (620ms, 980ms, 1400ms). That stagger is
-  the whole reason a slot machine is watchable — stopping them together would
-  resolve the question all at once, and the third reel is where the suspense
-  lives.
-- One timer drives every unlocked reel rather than one timer each. They are
-  meant to blur at the same rate, and three independent tickers drift apart
-  visibly inside a second.
-- The spin blur is opacity, not a shader. A symbol swapped every 60ms already
-  reads as motion; dimming it is what stops the eye trying to read each one.
-- Symbols are `◆ ● ■ ▲ 7`, all of which JetBrains Mono Nerd Font actually
-  has — checked against the font's cmap rather than assumed. `◇` is the idle
-  face, hollow, so an untouched machine reads as idle rather than as a loss.
-- The header is the shell's own `PanelHero`, the component the tailscale,
-  dropbox and agents panels use — icon, title, a meta line and a slot for a
-  trailing control, which is where the mute sits. The running tally lives in
-  that meta line, so the stats need no row of their own.
-- The panel anchors under its widget instead of centring on the bar: it
-  belongs to an icon on the right, and a popup opening in the middle of the
-  screen loses the thread back to what opened it.
 
 MIT.

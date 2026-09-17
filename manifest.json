@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "mrhogun.slots",
-  "name": "Slots",
-  "version": "1.0.0",
+  "name": "Casino",
+  "version": "2.0.0",
   "author": "MrHogun",
   "license": "MIT",
-  "description": "A slot machine for the Omarchy bar. Three reels, honest odds, and the last spin left sitting in the bar.",
+  "description": "A casino for the Omarchy bar: slots and European roulette, honest odds, nothing staked.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,21 +13,33 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Slots",
-    "description": "Three reels in a panel; the bar keeps the result of the last spin.",
+    "displayName": "Casino",
+    "description": "Slots and roulette in a panel; the bar keeps the last spin.",
     "category": "Fun",
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {
-      "muted": false
+      "muted": false,
+      "game": "slots"
     },
     "schema": [
       {
         "key": "muted",
         "type": "boolean",
         "label": "Mute",
-        "description": "Silence the reel ticks and the win sounds. The speaker icon in the panel header toggles it too.",
+        "description": "Silence the reels, the ball and the win sounds. The speaker in the panel header toggles it too.",
         "defaultValue": false
+      },
+      {
+        "key": "game",
+        "type": "string",
+        "label": "Game",
+        "description": "Which table the panel opens on. The tabs in the panel switch it too.",
+        "defaultValue": "slots",
+        "options": [
+          "slots",
+          "roulette"
+        ]
       }
     ]
   }
